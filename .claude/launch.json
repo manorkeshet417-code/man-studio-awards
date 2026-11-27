@@ -1,6 +1,6 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "awards", "runtimeExecutable": "node", "runtimeArgs": ["server.js"], "port": 4747 }
+    { "name": "awards", "runtimeExecutable": "python", "runtimeArgs": ["-m", "http.server", "4747", "--directory", "public"], "port": 4747 }
   ]
 }

@@ -1,0 +1,81 @@
+rules_version = '2';
+
+// MAN STUDIO AWARDS — Firestore security rules.
+// Paste into Firebase console → Firestore Database → Rules → Publish.
+// Replace ADMIN_UID (one place below) with the user ID of the "man studio" account.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.uid == 'ADMIN_UID'; }
+    function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
+    function notBlocked() { return !exists(/databases/$(database)/documents/blocked/$(request.auth.uid)); }
+    function shortStr(v, max) { return v is string && v.size() <= max; }
+
+    // Member profiles: private to the member and the admin
+    match /users/{uid} {
+      allow read: if isAdmin() || isSelf(uid);
+      allow create: if isSelf(uid) && notBlocked()
+        && request.resource.data.keys().hasOnly(['username', 'usernameKey', 'displayName', 'createdAt'])
+        && shortStr(request.resource.data.username, 24)
+        && shortStr(request.resource.data.usernameKey, 24)
+        && shortStr(request.resource.data.displayName, 40)
+        && shortStr(request.resource.data.createdAt, 40);
+      allow update: if isSelf(uid) && notBlocked()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName'])
+        && shortStr(request.resource.data.displayName, 40)
+        && request.resource.data.displayName.size() > 0;
+      allow delete: if isAdmin();
+    }
+
+    // Removed members can't vote or sign up again with the same account
+    match /blocked/{uid} {
+      allow read: if isAdmin() || isSelf(uid);
+      allow write: if isAdmin();
+    }
+
+    // Festivals: public, admin-managed
+    match /festivals/{festivalId} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /attendees/{uid} {
+        allow read: if true;
+        allow create: if isSelf(uid) && notBlocked()
+          && request.resource.data.keys().hasOnly(['createdAt'])
+          && exists(/databases/$(database)/documents/festivals/$(festivalId));
+        allow delete: if isSelf(uid) || isAdmin();
+      }
+    }
+
+    // Awards shows: drafts are admin-only
+    match /awards/{awardId} {
+      allow read: if isAdmin() || resource.data.status != 'draft';
+      allow write: if isAdmin();
+    }
+
+    // Votes: one document per member per category, only while voting is open.
+    // Members see only their own votes; totals are published by the admin on announcement.
+    match /votes/{voteId} {
+      function award(id) { return get(/databases/$(database)/documents/awards/$(id)).data; }
+
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update: if signedIn() && notBlocked()
+        && request.resource.data.keys().hasOnly(['awardId', 'categoryId', 'uid', 'nomineeId', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && voteId == request.resource.data.awardId + '_' + request.resource.data.categoryId + '_' + request.auth.uid
+        && shortStr(request.resource.data.nomineeId, 20)
+        && award(request.resource.data.awardId).status == 'voting';
+      allow delete: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid && award(resource.data.awardId).status == 'voting');
+    }
+
+    // Uploaded images (stored as compressed data URLs)
+    match /images/{imageId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && request.resource.data.data is string && request.resource.data.data.size() < 900000;
+      allow delete: if isAdmin();
+    }
+  }
+}

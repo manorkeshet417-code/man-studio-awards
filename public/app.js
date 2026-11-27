@@ -1,4 +1,6 @@
 /* ═══════════════════════ MAN STUDIO AWARDS — client ═══════════════════════ */
+import { api, configured, imageData } from './backend.js';
+
 (() => {
 'use strict';
 
@@ -14,22 +16,17 @@ let timers = [];
 let observers = [];
 let leaveGuard = null; // returns true if it's OK to leave the current page
 
-async function api(method, url, body) {
-  const res = await fetch(url, {
-    method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
-    credentials: 'same-origin',
-  });
-  let data = {};
-  try { data = await res.json(); } catch {}
-  if (!res.ok) {
-    const err = new Error(data.error || 'Something went wrong, please try again');
-    err.status = res.status;
-    throw err;
+// Images uploaded from the admin panel are stored as "img:<id>" and loaded on demand.
+function hydrateImages(root) {
+  const list = root.matches?.('img[src^="img:"]') ? [root] : [...(root.querySelectorAll?.('img[src^="img:"]') || [])];
+  for (const el of list) {
+    const refStr = el.getAttribute('src');
+    el.removeAttribute('src');
+    el.style.opacity = '0';
+    imageData(refStr).then((data) => { if (data) { el.src = data; el.style.transition = 'opacity .4s'; el.style.opacity = '1'; } });
   }
-  return data;
 }
+new MutationObserver((muts) => muts.forEach((m) => m.addedNodes.forEach((n) => n.nodeType === 1 && hydrateImages(n)))).observe(document.body, { childList: true, subtree: true });
 
 const LOCALE = 'en-US';
 const fmtDate = (d, opts = { day: 'numeric', month: 'long', year: 'numeric' }) => {
@@ -368,7 +365,7 @@ async function pageHome() {
     <div class="stat"><b>${stats.festivals}</b><span>Festivals</span></div>
     <div class="stat"><b>${stats.awards}</b><span>Awards shows</span></div>
     <div class="stat"><b>${stats.categories}</b><span>Categories</span></div>
-    <div class="stat"><b>${stats.members}</b><span>Members</span></div>
+    <div class="stat"><b>${stats.nominees}</b><span>Nominees</span></div>
   </div></section>
 
   <section class="section"><div class="container">
@@ -586,13 +583,13 @@ async function pageAuth(mode) {
   const isLogin = mode === 'login';
   const qs = location.hash.includes('?') ? '?' + location.hash.split('?')[1] : '';
   app.innerHTML = `<div class="page auth-wrap">
-    <div class="auth-art"><img class="logo" src="/assets/logo.jpg" alt="MAN studio" /><p class="quote">“Every great game started with one person who believed in it.”</p></div>
+    <div class="auth-art"><img class="logo" src="assets/logo.jpg" alt="MAN studio" /><p class="quote">“Every great game started with one person who believed in it.”</p></div>
     <div class="auth-form-side"><form class="auth-box" id="auth-form" novalidate>
       <div class="eyebrow ${isLogin ? '' : 'pink'}">${isLogin ? 'Welcome back' : 'Join the show'}</div>
       <h1>${isLogin ? 'Welcome <span class="grad-text">back</span>' : 'Create an <span class="grad-text">account</span>'}</h1>
       <p>${isLogin ? 'Log in to vote, sign up for festivals and follow the results.' : 'It takes a second, and then you’re in. Your vote is waiting.'}</p>
       <div id="auth-err"></div>
-      <label class="field"><span>Username</span><input class="input" name="username" autocomplete="username" required minlength="3" maxlength="24" /></label>
+      <label class="field"><span>Username</span><input class="input" name="username" autocomplete="username" required minlength="3" maxlength="24" />${isLogin ? '' : '<small>3–24 characters: English letters, numbers, spaces, _ or -</small>'}</label>
       ${isLogin ? '' : '<label class="field"><span>Display name</span><input class="input" name="displayName" maxlength="40" /><small>Optional. You can change it later.</small></label>'}
       <label class="field"><span>Password</span><div class="pw-wrap"><input class="input" type="password" name="password" autocomplete="${isLogin ? 'current-password' : 'new-password'}" required minlength="${isLogin ? 1 : 6}" placeholder="${isLogin ? '' : 'At least 6 characters'}" /><button type="button" class="pw-toggle">Show</button></div></label>
       <button class="btn btn-primary btn-lg" style="width:100%;margin-top:6px" type="submit">${isLogin ? 'Log in' : 'Create account ✦'}</button>
@@ -634,6 +631,7 @@ async function pageProfile() {
       <div style="flex:1"><h1>${esc(me.displayName)}</h1><span class="muted">@${esc(me.username)}</span> ${me.role === 'admin' ? '<span class="badge gold" style="margin-inline-start:8px">Admin</span>' : ''}<div class="muted" style="font-size:14px;margin-top:4px">Member since ${esc(fmtDate(me.createdAt))}</div></div>
       ${me.role === 'admin' ? '<a class="btn btn-gold" href="#/admin">⚙️ Admin panel</a>' : ''}
     </div>
+    ${me.username === 'man studio' && !me.adminConfigured ? `<div class="card panel reveal" style="border-color:rgba(255,211,107,.5)"><h3>⚙️ Finish admin setup</h3><p class="muted" style="margin:0 0 10px">This is the admin account. Copy this user ID into <b>firebase-config.js</b> (adminUid) and <b>firestore.rules</b> (ADMIN_UID) to unlock the admin panel:</p><code id="my-uid" style="display:block;padding:12px 14px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid var(--line-strong);font-size:15px;user-select:all;word-break:break-all">${esc(me.id)}</code><button class="btn btn-gold btn-sm" style="margin-top:12px" id="copy-uid">Copy ID</button></div>` : ''}
     <div class="detail-layout" style="padding:0">
       <div class="card panel reveal"><h3>🗳️ My votes <span class="badge plain gray">${votes.length}</span></h3>
         ${votes.length ? `<div class="vote-list">${votes.map((v) => `<a class="vote-item" href="#/award/${esc(v.awardId)}"><div class="thumb">${v.image ? `<img src="${esc(v.image)}" alt=""/>` : ''}</div><div class="info"><b>${esc(v.nominee)}</b><small>${esc(v.category)} · ${esc(v.awardTitle)}</small></div>${v.won ? '<span class="badge gold">Won! 🏆</span>' : ''}</a>`).join('')}</div>` : emptyBlock('🗳️', 'No votes yet', 'Head over to the awards shows and make your voice heard.')}
@@ -643,6 +641,8 @@ async function pageProfile() {
         ${passwordForm()}
       </div>
     </div></div>`;
+  const cu = $('#copy-uid');
+  if (cu) cu.onclick = () => navigator.clipboard.writeText(me.id).then(() => toast('User ID copied'));
   $('#name-form').onsubmit = async (e) => {
     e.preventDefault();
     try { const r = await api('PUT', '/api/me', Object.fromEntries(new FormData(e.target))); me = r.user; renderNavUser(); toast('Name updated'); router(); }
@@ -724,19 +724,10 @@ async function adminFestivals(main) {
   }));
 }
 
-function readImage(file) {
-  return new Promise((resolve, reject) => {
-    if (!file) return reject(new Error('No file selected'));
-    if (file.size > 8 * 1024 * 1024) return reject(new Error('Image is larger than 8MB'));
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = () => reject(new Error('Could not read the file'));
-    r.readAsDataURL(file);
-  });
-}
 async function uploadImage(file) {
-  const data = await readImage(file);
-  const { url } = await api('POST', '/api/admin/upload', { data });
+  if (!file) throw new Error('No file selected');
+  if (file.size > 20 * 1024 * 1024) throw new Error('Image is larger than 20MB');
+  const { url } = await api('POST', '/api/admin/upload', { file });
   return url;
 }
 function pickFile() {
@@ -1023,24 +1014,40 @@ async function adminUsers(main) {
       <td class="muted">@${esc(u.username)}</td>
       <td>${u.role === 'admin' ? '<span class="badge gold">Admin</span>' : '<span class="badge plain gray">Member</span>'}</td>
       <td>${u.votes}</td><td class="muted">${esc(fmtDate(u.createdAt, { day: 'numeric', month: 'short', year: 'numeric' }))}</td>
-      <td>${u.role === 'admin' ? '' : `<button class="btn btn-danger btn-sm" data-del="${esc(u.id)}" data-name="${esc(u.displayName)}">Delete</button>`}</td>
+      <td>${u.role === 'admin' ? '' : `<button class="btn btn-danger btn-sm" data-del="${esc(u.id)}" data-name="${esc(u.displayName)}">Remove</button>`}</td>
     </tr>`).join('')}</tbody></table></div>`;
   $('#user-q').oninput = (e) => { const q = e.target.value.trim().toLowerCase(); $$('tbody tr', main).forEach((tr) => (tr.hidden = q && !tr.dataset.q.includes(q))); };
   $$('[data-del]', main).forEach((b) => (b.onclick = async () => {
-    if (!(await confirmModal({ title: 'Delete this user?', text: `${b.dataset.name} will be permanently deleted, along with all their votes and festival sign-ups.`, ok: 'Delete', danger: true }))) return;
-    try { await api('DELETE', `/api/admin/users/${b.dataset.del}`); toast('User deleted'); adminUsers(main); } catch (e) { toast(e.message, 'err'); }
+    if (!(await confirmModal({ title: 'Remove this user?', text: `${b.dataset.name} will be removed and blocked: their profile, votes and festival sign-ups are deleted and they can no longer vote.`, ok: 'Remove', danger: true }))) return;
+    try { await api('DELETE', `/api/admin/users/${b.dataset.del}`); toast('User removed'); adminUsers(main); } catch (e) { toast(e.message, 'err'); }
   }));
 }
 
 async function adminSettings(main) {
   main.innerHTML = `<div class="admin-top"><div><h1>🔒 Settings</h1><p>Admin account security</p></div></div>
     <div style="max-width:520px">${passwordForm()}
-    <div class="card panel"><h3>ℹ️ About this account</h3><p class="muted" style="margin:0">The admin username is <b style="color:var(--gold)">${esc(me.username)}</b>. Only this account can access the admin panel. After changing the password, delete the ADMIN-PASSWORD.txt file from the project folder.</p></div></div>`;
+    <div class="card panel"><h3>ℹ️ About this account</h3><p class="muted" style="margin:0">The admin username is <b style="color:var(--gold)">${esc(me.username)}</b>. Only this account can access the admin panel. Accounts are managed by Firebase Authentication; content and votes are stored in Cloud Firestore.</p></div></div>`;
   bindPasswordForm();
 }
 
 // ───────────── boot ─────────────
+function pageSetup() {
+  $('#nav-user').innerHTML = '';
+  app.innerHTML = `<div class="page container" style="padding:70px 0 90px;max-width:760px">
+    <div class="eyebrow gold">Setup</div>
+    <h1 class="h2" style="margin-bottom:14px">Almost <span class="gold-text">live</span></h1>
+    <p class="lead" style="margin-bottom:28px">This site stores accounts and votes in Firebase. Connect a Firebase project to switch it on.</p>
+    <div class="card panel"><ol style="margin:0;padding-inline-start:20px;line-height:2;color:#cdd2f5">
+      <li>Create a project at <b>console.firebase.google.com</b> and add a <b>Web app</b>.</li>
+      <li>Authentication → Sign-in method → enable <b>Email/Password</b>.</li>
+      <li>Firestore Database → <b>Create database</b>.</li>
+      <li>Paste the web app’s <b>firebaseConfig</b> into <code>public/firebase-config.js</code>.</li>
+      <li>Paste <code>firestore.rules</code> into Firestore → Rules and publish.</li>
+    </ol></div></div>`;
+}
+
 (async () => {
+  if (!configured) return pageSetup();
   try { me = (await api('GET', '/api/me')).user; } catch {}
   renderNavUser();
   router();
