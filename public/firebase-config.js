@@ -6,12 +6,12 @@
 
 // 1) Firebase console → Project settings → Your apps → Web app → "firebaseConfig"
 export const firebaseConfig = {
-  apiKey: 'PASTE_API_KEY',
-  authDomain: '',
-  projectId: '',
-  storageBucket: '',
-  messagingSenderId: '',
-  appId: '',
+  apiKey: 'AIzaSyBmQKPdy9YKkeaKNRyt2R5oyANT2Gcafco',
+  authDomain: 'nexusplay-30872.firebaseapp.com',
+  projectId: 'nexusplay-30872',
+  storageBucket: 'nexusplay-30872.firebasestorage.app',
+  messagingSenderId: '974702271971',
+  appId: '1:974702271971:web:9c9f5d2baa0b8eba1854d6',
 };
 
 // 2) After signing up on the site as "man studio", paste that account's user ID here
