@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MAN STUDIO AWARDS</title>
+  <meta name="description" content="MAN STUDIO AWARDS: festivals, game awards and community voting" />
+  <meta name="theme-color" content="#05061a" />
+  <link rel="icon" href="/assets/logo.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Orbitron:wght@500;700;900&family=Pacifico&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <canvas id="bg-canvas" aria-hidden="true"></canvas>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="#/" class="brand" aria-label="MAN STUDIO AWARDS home">
+        <span class="brand-mark">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 L36 34 L4 34 Z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="brand-text">
+          <b>MAN</b><i>studio</i><small>AWARDS</small>
+        </span>
+      </a>
+      <nav class="nav-links" id="nav-links">
+        <a href="#/" data-nav="home">Home</a>
+        <a href="#/festivals" data-nav="festivals">Festivals</a>
+        <a href="#/awards" data-nav="awards">Awards</a>
+        <a href="#/admin" data-nav="admin" class="admin-link" hidden>Admin panel</a>
+      </nav>
+      <div class="nav-user" id="nav-user"></div>
+      <button class="burger" id="burger" aria-label="Menu"><span></span><span></span><span></span></button>
+    </div>
+  </header>
+
+  <main id="app" tabindex="-1"></main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="/assets/logo.jpg" alt="" width="54" height="54" />
+        <div>
+          <b>MAN STUDIO AWARDS</b>
+          <span>The stage for creators, games and the community.</span>
+        </div>
+      </div>
+      <div class="footer-links">
+        <a href="#/festivals">Festivals</a>
+        <a href="#/awards">Awards</a>
+        <a href="#/profile">My profile</a>
+      </div>
+      <small>© <span id="year"></span> MAN STUDIO · All rights reserved</small>
+    </div>
+  </footer>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <div class="modal-root" id="modal-root"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
