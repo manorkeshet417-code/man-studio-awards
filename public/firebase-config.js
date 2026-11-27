@@ -16,4 +16,4 @@ export const firebaseConfig = {
 
 // 2) After signing up on the site as "man studio", paste that account's user ID here
 //    (and the same ID in firestore.rules). Until then nobody is admin.
-export const adminUid = '';
+export const adminUid = 'a89uuC8scOTRQmxPOH7bShDMtgB3';
